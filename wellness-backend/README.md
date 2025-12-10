@@ -15,7 +15,7 @@ Spring Boot backend for the Wellness Marketplace project.
 - Java 17
 - Maven
 - MySQL (or use RDS/container)
-- (Optional) Postman for API testing
+- Postman for API testing
 
 ### Setup
 1. Create a MySQL database:
