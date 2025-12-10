@@ -1,0 +1,23 @@
+# Set default behavior to automatically normalize line endings.
+* text=auto
+
+# Ensure scripts keep LF (optional)
+*.sh text eol=lf
+*.py text eol=lf
+
+# Java and other code files
+*.java text eol=lf
+
+# Binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.jar binary
+
+# IDE/editor files
+/.vscode/* text eol=lf
+/.idea/* -text
+
+# Maven target
+/target/* -text
