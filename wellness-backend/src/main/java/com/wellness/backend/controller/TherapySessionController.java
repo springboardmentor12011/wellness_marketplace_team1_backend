@@ -5,6 +5,8 @@ import com.wellness.backend.model.TherapySession;
 import com.wellness.backend.model.User;
 import com.wellness.backend.security.CustomUserDetails;
 import com.wellness.backend.service.TherapySessionService;
+
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -82,21 +84,25 @@ public class TherapySessionController {
 
         return ResponseEntity.ok(session);
     }
-
     @GetMapping("/calendar")
     public List<TherapySession> getCalendarSessions(
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @RequestParam LocalDate start,
-            @RequestParam LocalDate end
+            @RequestParam String start,
+            @RequestParam String end
     ) {
         User user = userDetails.getUser();
 
+        // 🔒 Trim to remove <EOL>, spaces, hidden characters
+        LocalDate startDate = LocalDate.parse(start.trim());
+        LocalDate endDate = LocalDate.parse(end.trim());
+
         return therapySessionService.getCalendarSessions(
                 user,
-                start.atStartOfDay(),
-                end.atTime(23, 59)
+                startDate.atStartOfDay(),
+                endDate.atTime(23, 59, 59)
         );
     }
+
     @GetMapping("/availability")
     public ResponseEntity<List<LocalDateTime>> getAvailability(
             @RequestParam Long practitionerId,
