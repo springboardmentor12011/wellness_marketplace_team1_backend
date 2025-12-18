@@ -2,5 +2,10 @@ package com.wellness.backend.model;
 
 public enum Role {
     PATIENT,
-    PRACTITIONER
+    PRACTITIONER,
+    ADMIN;
+
+    public String getName() {
+        return this.name();
+    }
 }

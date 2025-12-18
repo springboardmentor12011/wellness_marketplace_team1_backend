@@ -2,7 +2,6 @@ package com.wellness.backend.model;
 
 import jakarta.persistence.*;
 import lombok.*;
-
 @Entity
 @Table(name = "practitioner_profiles")
 @Getter
@@ -28,3 +27,4 @@ public class PractitionerProfile {
     @Builder.Default
     private Double rating = 0.0; // _rating
 }
+
