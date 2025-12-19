@@ -214,13 +214,18 @@ public class TherapySessionService {
                         LocalDateTime.now()
                 );
     }
-    public List<TherapySession> getUpcomingSessionsForPractitioner(User practitioner) {
-        return therapySessionRepository
-                .findByPractitionerAndSessionTimeAfter(
-                        practitioner,
-                        LocalDateTime.now()
-                );
+    public List<TherapySession> getUpcomingSessionsForPractitioner(User practitionerUser) {
+
+        PractitionerProfile profile =
+                practitionerProfileRepository.findByUser(practitionerUser)
+                .orElseThrow(() -> new RuntimeException("Practitioner profile not found"));
+
+        return therapySessionRepository.findByPractitionerAndSessionTimeAfter(
+                practitionerUser,
+                LocalDateTime.now()
+        );
     }
+
     public TherapySession getSessionDetail(Long sessionId, Long userId) {
 
         TherapySession session = therapySessionRepository.findById(sessionId)

@@ -62,14 +62,14 @@ public interface TherapySessionRepository extends JpaRepository<TherapySession, 
     );
 
     @Query("""
-        SELECT ts FROM TherapySession ts
-        WHERE ts.practitioner.user = :user
-        AND ts.sessionTime > :now
-    """)
-    List<TherapySession> findByPractitionerAndSessionTimeAfter(
-            @Param("user") User user,
-            @Param("now") LocalDateTime now
-    );
+    	    SELECT ts FROM TherapySession ts
+    	    WHERE ts.practitioner.user = :practitioner
+    	    AND ts.sessionTime > :now
+    	""")
+    	List<TherapySession> findByPractitionerAndSessionTimeAfter(
+    	        @Param("practitioner") User practitioner,
+    	        @Param("now") LocalDateTime now
+    	);
 
     @Query("""
         SELECT ts FROM TherapySession ts

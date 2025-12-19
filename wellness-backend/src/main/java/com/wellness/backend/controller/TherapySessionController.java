@@ -116,6 +116,7 @@ public class TherapySessionController {
                 )
         );
     }
+
     @GetMapping("/practitioner/upcoming")
     public ResponseEntity<List<TherapySession>> practitionerUpcomingSessions(
             @AuthenticationPrincipal CustomUserDetails userDetails
