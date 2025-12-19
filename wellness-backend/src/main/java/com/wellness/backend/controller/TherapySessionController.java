@@ -2,19 +2,23 @@ package com.wellness.backend.controller;
 
 import com.wellness.backend.model.SessionMode;
 import com.wellness.backend.model.TherapySession;
+import com.wellness.backend.model.TherapyType;
 import com.wellness.backend.model.User;
 import com.wellness.backend.security.CustomUserDetails;
 import com.wellness.backend.service.TherapySessionService;
+
+import io.jsonwebtoken.lang.Arrays;
 
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import com.wellness.backend.dto.BookSessionRequest;
 import com.wellness.backend.dto.RescheduleSessionRequest;
@@ -100,6 +104,46 @@ public class TherapySessionController {
                 user,
                 startDate.atStartOfDay(),
                 endDate.atTime(23, 59, 59)
+        );
+    }
+    @GetMapping("/patient/upcoming")
+    public ResponseEntity<List<TherapySession>> patientUpcomingSessions(
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        return ResponseEntity.ok(
+                therapySessionService.getUpcomingSessionsForPatient(
+                        userDetails.getUser()
+                )
+        );
+    }
+    @GetMapping("/practitioner/upcoming")
+    public ResponseEntity<List<TherapySession>> practitionerUpcomingSessions(
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        return ResponseEntity.ok(
+                therapySessionService.getUpcomingSessionsForPractitioner(
+                        userDetails.getUser()
+                )
+        );
+    }
+
+
+    @GetMapping
+    @RequestMapping("/therapy-types")
+    public List<String> getTherapyTypes() {
+        return Stream.of(TherapyType.values())
+                     .map(Enum::name)
+                     .collect(Collectors.toList());
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<TherapySession> getSessionDetail(
+            @PathVariable Long id,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        Long userId = userDetails.getUser().getId();
+        return ResponseEntity.ok(
+                therapySessionService.getSessionDetail(id, userId)
         );
     }
 

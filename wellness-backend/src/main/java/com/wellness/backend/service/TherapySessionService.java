@@ -207,6 +207,37 @@ public class TherapySessionService {
             );
         }
     }
+    public List<TherapySession> getUpcomingSessionsForPatient(User patient) {
+        return therapySessionRepository
+                .findByUserAndSessionTimeAfter(
+                        patient,
+                        LocalDateTime.now()
+                );
+    }
+    public List<TherapySession> getUpcomingSessionsForPractitioner(User practitioner) {
+        return therapySessionRepository
+                .findByPractitionerAndSessionTimeAfter(
+                        practitioner,
+                        LocalDateTime.now()
+                );
+    }
+    public TherapySession getSessionDetail(Long sessionId, Long userId) {
+
+        TherapySession session = therapySessionRepository.findById(sessionId)
+                .orElseThrow(() -> new RuntimeException("Session not found"));
+
+        boolean isPatient =
+                session.getPatient().getId().equals(userId);
+
+        boolean isPractitioner =
+                session.getPractitioner().getUser().getId().equals(userId);
+
+        if (!isPatient && !isPractitioner) {
+            throw new AccessDeniedException("Not authorized");
+        }
+
+        return session;
+    }
 
     private void validateSlotAvailability(
             PractitionerProfile practitioner,

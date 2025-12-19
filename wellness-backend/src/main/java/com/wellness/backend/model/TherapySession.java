@@ -40,4 +40,8 @@ public class TherapySession {
     private SessionMode mode; // ONLINE / OFFLINE
 
     private String googleEventId; // 🔥 REQUIRED for calendar sync
+    
+    @Enumerated(EnumType.STRING)
+    private TherapyType therapyType;
+
 }
