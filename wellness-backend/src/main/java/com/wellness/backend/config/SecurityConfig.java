@@ -43,8 +43,10 @@ public class SecurityConfig {
 
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/api/therapy-types").permitAll()
-                .requestMatchers("/api/admin/**").hasAuthority("ADMIN")
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                .requestMatchers("/api/admin/products/**").hasRole("ADMIN")
                 .requestMatchers("/api/orders/**").permitAll()
+                .requestMatchers("/api/forum/**").authenticated()
                 .anyRequest().authenticated()
             )
             .authenticationProvider(authenticationProvider())

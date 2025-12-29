@@ -109,40 +109,4 @@ public class ProductController {
     ) {
         return ResponseEntity.ok(service.isInStock(id, quantity));
     }
-
-    // -------------------------------------------------------------
-    // ADMIN: ADD PRODUCT
-    // -------------------------------------------------------------
-    @PreAuthorize("hasRole('ADMIN')")
-    @PostMapping
-    public ResponseEntity<Product> addProduct(
-            @Valid @RequestBody Product product
-    ) {
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(service.addProduct(product));
-    }
-
-    // -------------------------------------------------------------
-    // ADMIN: UPDATE PRODUCT
-    // -------------------------------------------------------------
-    @PreAuthorize("hasRole('ADMIN')")
-    @PutMapping("/{id}")
-    public ResponseEntity<Product> updateProduct(
-            @PathVariable Long id,
-            @Valid @RequestBody Product product
-    ) {
-        return ResponseEntity.ok(service.updateProduct(id, product));
-    }
-
-    // -------------------------------------------------------------
-    // ADMIN: DELETE PRODUCT
-    // -------------------------------------------------------------
-    @PreAuthorize("hasRole('ADMIN')")
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteProduct(
-            @PathVariable Long id
-    ) {
-        service.deleteProduct(id);
-        return ResponseEntity.noContent().build();
-    }
 }

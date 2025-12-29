@@ -10,7 +10,6 @@ import org.springframework.security.core.userdetails.UserDetails;
 
 @RestController
 @RequestMapping("/api/users")
-@CrossOrigin(origins = "*")
 public class UserController {
     private final UserService userService;
     public UserController(UserService s) { this.userService = s; }
