@@ -67,11 +67,17 @@ public class Order {
     @Column(nullable = false, length = 10)
     private String contactNumber;
 
+    // ----------------------------------
+    // ORDER ACTION TRACKING (NEW)
+    // ----------------------------------
     @Column(length = 500)
     private String actionReason;
 
     @Column(length = 30)
     private String lastAction;
+
+    @Column(name = "refunded_at")
+    private LocalDateTime refundedAt;
 
     // ----------------------------------
     // PAYMENT & STATUS
@@ -92,7 +98,6 @@ public class Order {
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    // ✅ NEW FIELD
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 

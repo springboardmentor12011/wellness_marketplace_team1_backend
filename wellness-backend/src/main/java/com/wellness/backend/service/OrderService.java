@@ -1,8 +1,6 @@
 package com.wellness.backend.service;
 
-import com.wellness.backend.dto.OrderResponse;
-import com.wellness.backend.dto.OrderStatusResponse;
-import com.wellness.backend.dto.PlaceOrderRequest;
+import com.wellness.backend.dto.*;
 import com.wellness.backend.model.*;
 import com.wellness.backend.repository.CartRepository;
 import com.wellness.backend.repository.OrderRepository;
@@ -37,9 +35,9 @@ public class OrderService {
         this.smsService = smsService;
     }
 
-    // =============================
+    // ==================================================
     // PLACE ORDER
-    // =============================
+    // ==================================================
     public OrderResponse placeOrder(User user, PlaceOrderRequest request) {
 
         Order order = createOrderLogic(user, request);
@@ -53,9 +51,6 @@ public class OrderService {
         return mapToResponse(savedOrder);
     }
 
-    // =============================
-    // CORE ORDER CREATION
-    // =============================
     private Order createOrderLogic(User user, PlaceOrderRequest req) {
 
         Cart cart = cartRepository.findByUser(user)
@@ -88,9 +83,9 @@ public class OrderService {
         return order;
     }
 
-    // =============================
-    // STATUS HISTORY LOGGER
-    // =============================
+    // ==================================================
+    // STATUS HISTORY
+    // ==================================================
     private void recordStatus(Order order, OrderStatus status) {
         OrderStatusHistory history = new OrderStatusHistory();
         history.setOrder(order);
@@ -99,9 +94,9 @@ public class OrderService {
         statusHistoryRepository.save(history);
     }
 
-    // =============================
-    // RESPONSE MAPPER
-    // =============================
+    // ==================================================
+    // MAPPERS
+    // ==================================================
     private OrderResponse mapToResponse(Order order) {
         return OrderResponse.builder()
                 .orderId(order.getId())
@@ -112,57 +107,41 @@ public class OrderService {
                 .build();
     }
 
-    // =============================
-    // MY ORDERS
-    // =============================
+    // ==================================================
+    // USER ORDERS
+    // ==================================================
     public Page<Order> getMyOrders(User user, int page, int size) {
-        Pageable pageable = PageRequest.of(
-                page,
-                size,
-                Sort.by("createdAt").descending()
-        );
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         return orderRepository.findByUserOrderByCreatedAtDesc(user, pageable);
     }
 
-    // =============================
-    // GET SINGLE ORDER
-    // =============================
     public OrderResponse getOrderResponse(User user, Long orderId) {
-        Order order = getUserOrder(user, orderId);
-        return mapToResponse(order);
+        return mapToResponse(getUserOrder(user, orderId));
     }
 
-    // =============================
-    // OWNERSHIP CHECK
-    // =============================
     private Order getUserOrder(User user, Long orderId) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Order not found"));
 
         if (!order.getUser().getId().equals(user.getId())) {
-            throw new AccessDeniedException("Unauthorized access to order");
+            throw new AccessDeniedException("Unauthorized access");
         }
-
         return order;
     }
 
-    // =============================
-    // STATUS VALIDATION
-    // =============================
     private void validateStatus(Order order, Set<OrderStatus> allowed, String action) {
         if (!allowed.contains(order.getStatus())) {
             throw new IllegalStateException(
-                    "Cannot " + action + " order with status: " + order.getStatus()
+                    "Cannot " + action + " order with status " + order.getStatus()
             );
         }
     }
 
-    // =============================
+    // ==================================================
     // USER ACTIONS
-    // =============================
+    // ==================================================
     public OrderResponse cancelOrder(User user, Long id, String reason) {
         Order order = getUserOrder(user, id);
-
         validateStatus(order, Set.of(OrderStatus.PLACED), "cancel");
 
         order.setStatus(OrderStatus.CANCELLED);
@@ -177,7 +156,6 @@ public class OrderService {
 
     public OrderResponse requestReturn(User user, Long id, String reason) {
         Order order = getUserOrder(user, id);
-
         validateStatus(order, Set.of(OrderStatus.DELIVERED), "request return");
 
         order.setStatus(OrderStatus.RETURN_REQUESTED);
@@ -192,7 +170,6 @@ public class OrderService {
 
     public OrderResponse requestReplacement(User user, Long id, String reason) {
         Order order = getUserOrder(user, id);
-
         validateStatus(order, Set.of(OrderStatus.DELIVERED), "request replacement");
 
         order.setStatus(OrderStatus.REPLACEMENT_REQUESTED);
@@ -207,7 +184,6 @@ public class OrderService {
 
     public OrderResponse refundOrder(User user, Long id, String reason) {
         Order order = getUserOrder(user, id);
-
         validateStatus(order, Set.of(OrderStatus.RETURNED), "request refund");
 
         order.setStatus(OrderStatus.REFUND_REQUESTED);
@@ -220,11 +196,18 @@ public class OrderService {
         return mapToResponse(saved);
     }
 
-    // =============================
+    // ==================================================
     // ADMIN
-    // =============================
+    // ==================================================
     public Page<Order> getAllOrders(int page, int size) {
         return orderRepository.findAll(
+                PageRequest.of(page, size, Sort.by("createdAt").descending())
+        );
+    }
+
+    public Page<Order> getOrderByStatus(OrderStatus status, int page, int size) {
+        return orderRepository.findByStatus(
+                status,
                 PageRequest.of(page, size, Sort.by("createdAt").descending())
         );
     }
@@ -235,24 +218,38 @@ public class OrderService {
 
         order.setStatus(status);
         Order saved = orderRepository.save(order);
-
         recordStatus(saved, status);
 
         return saved;
     }
 
-    // =============================
-    // TRACK ORDER STATUS (SIMPLE VERSION)
-    // =============================
-    public OrderStatusResponse trackOrderStatus(User user, Long orderId) {
+    public Order approveRefund(Long id) {
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
 
+        if (order.getStatus() != OrderStatus.REFUND_REQUESTED) {
+            throw new IllegalStateException("Refund not requested");
+        }
+
+        order.setStatus(OrderStatus.REFUNDED);
+        order.setRefundedAt(LocalDateTime.now());
+
+        Order saved = orderRepository.save(order);
+        recordStatus(saved, OrderStatus.REFUNDED);
+
+        return saved;
+    }
+
+    // ==================================================
+    // TRACK ORDER
+    // ==================================================
+    public OrderStatusResponse trackOrderStatus(User user, Long orderId) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Order not found"));
 
-        // Ensure user owns the order OR is admin
         if (!order.getUser().getId().equals(user.getId())
                 && user.getRole() != Role.ADMIN) {
-            throw new AccessDeniedException("You are not allowed to view this order");
+            throw new AccessDeniedException("Not allowed");
         }
 
         return OrderStatusResponse.builder()
