@@ -6,8 +6,12 @@ import com.wellness.backend.model.Role;
 import com.wellness.backend.model.User;
 import com.wellness.backend.repository.PractitionerProfileRepository;
 import com.wellness.backend.repository.UserRepository;
+
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class UserService {
@@ -41,6 +45,16 @@ public class UserService {
                         new ResourceNotFoundException("User not found: " + id));
 
         return mapToProfileResponse(user);
+    }
+
+    // -------------------------------------------------
+    // ✅ ADMIN: GET ALL USERS
+    // -------------------------------------------------
+    public List<UserProfileResponse> getAllUsers() {
+        return userRepository.findAll()
+                .stream()
+                .map(this::mapToProfileResponse)
+                .collect(Collectors.toList());
     }
 
     // -------------------------------------------------
