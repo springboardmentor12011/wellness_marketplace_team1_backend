@@ -35,9 +35,6 @@ public class OrderService {
         this.smsService = smsService;
     }
 
-    // ==================================================
-    // PLACE ORDER
-    // ==================================================
     public OrderResponse placeOrder(User user, PlaceOrderRequest request) {
 
         Order order = createOrderLogic(user, request);
@@ -83,9 +80,7 @@ public class OrderService {
         return order;
     }
 
-    // ==================================================
-    // STATUS HISTORY
-    // ==================================================
+
     private void recordStatus(Order order, OrderStatus status) {
         OrderStatusHistory history = new OrderStatusHistory();
         history.setOrder(order);
@@ -94,9 +89,7 @@ public class OrderService {
         statusHistoryRepository.save(history);
     }
 
-    // ==================================================
-    // MAPPERS
-    // ==================================================
+
     private OrderResponse mapToResponse(Order order) {
         return OrderResponse.builder()
                 .orderId(order.getId())
@@ -107,9 +100,7 @@ public class OrderService {
                 .build();
     }
 
-    // ==================================================
-    // USER ORDERS
-    // ==================================================
+
     public Page<Order> getMyOrders(User user, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         return orderRepository.findByUserOrderByCreatedAtDesc(user, pageable);

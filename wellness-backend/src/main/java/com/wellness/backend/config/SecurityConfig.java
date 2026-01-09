@@ -36,22 +36,23 @@ public class SecurityConfig {
         this.userDetailsService = userDetailsService;
     }
 
-
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
         http
-            .cors(cors -> cors.configurationSource(corsConfigurationSource())) // ✅ ENABLE CORS
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
             .sessionManagement(sm ->
                     sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/api/ai/**").permitAll()
+                .requestMatchers("/api/health-data/**").permitAll()
                 .requestMatchers("/api/therapy-types").permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                .requestMatchers("/api/orders/**").permitAll()
                 .requestMatchers("/api/forum/**").authenticated()
+                .requestMatchers("/api/orders/**").authenticated()
                 .anyRequest().authenticated()
             )
             .authenticationProvider(authenticationProvider())
@@ -59,7 +60,6 @@ public class SecurityConfig {
 
         return http.build();
     }
-
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
@@ -77,7 +77,6 @@ public class SecurityConfig {
         return source;
     }
 
-
     @Bean
     public AuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider provider =
@@ -85,7 +84,6 @@ public class SecurityConfig {
         provider.setPasswordEncoder(passwordEncoder());
         return provider;
     }
-
 
     @Bean
     public PasswordEncoder passwordEncoder() {

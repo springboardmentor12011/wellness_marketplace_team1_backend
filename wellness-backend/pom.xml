@@ -95,6 +95,14 @@
             <version>0.11.5</version>
             <scope>runtime</scope>
         </dependency>
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-webflux</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-websocket</artifactId>
+</dependency>
 
 <!-- ================= GOOGLE CALENDAR ================= -->
 
@@ -125,6 +133,13 @@
     <groupId>com.google.http-client</groupId>
     <artifactId>google-http-client-jackson2</artifactId>
     <version>1.43.3</version>
+</dependency>
+
+<!-- STRIPE -->
+<dependency>
+    <groupId>com.stripe</groupId>
+    <artifactId>stripe-java</artifactId>
+    <version>24.10.0</version>
 </dependency>
 
         <!-- ================= TESTING ================= -->
