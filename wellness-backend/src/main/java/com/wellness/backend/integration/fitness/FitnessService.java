@@ -8,10 +8,7 @@ import java.util.Map;
 @Service
 public class FitnessService {
 
-    /**
-     * Temporary mock data.
-     * Replace with Google Fit / Fitbit / Apple Health integration later.
-     */
+
     public Map<String, Object> getActivitySummary(Long userId) {
 
         Map<String, Object> summary = new HashMap<>();

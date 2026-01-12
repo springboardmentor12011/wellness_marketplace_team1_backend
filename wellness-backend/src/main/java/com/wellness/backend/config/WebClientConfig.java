@@ -35,12 +35,21 @@ public class WebClientConfig {
 
         return WebClient.builder()
                 .baseUrl(openFdaBaseUrl)
+
+                // ✅ REQUIRED FOR OPENFDA (403 FIX)
                 .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
+                .defaultHeader(HttpHeaders.USER_AGENT, "Wellness-Backend/1.0")
+
+                // ✅ HANDLE LARGE JSON PAYLOADS
                 .exchangeStrategies(
                         ExchangeStrategies.builder()
-                                .codecs(c -> c.defaultCodecs().maxInMemorySize(10 * 1024 * 1024))
+                                .codecs(config ->
+                                        config.defaultCodecs()
+                                                .maxInMemorySize(10 * 1024 * 1024)
+                                )
                                 .build()
                 )
+
                 .clientConnector(new ReactorClientHttpConnector(httpClient))
                 .build();
     }
