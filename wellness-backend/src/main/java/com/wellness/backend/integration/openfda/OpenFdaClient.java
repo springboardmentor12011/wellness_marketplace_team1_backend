@@ -17,9 +17,7 @@ public class OpenFdaClient {
         this.webClient = webClient;
     }
 
-    // ===============================
-    // SEARCH DRUG BY NAME / SYMPTOM
-    // ===============================
+
     public Mono<OpenFdaResponse> searchDrug(String keyword) {
 
         return webClient.get()

@@ -27,7 +27,9 @@ public class ForumController {
         this.answerRepository = answerRepository;
     }
 
+    // =========================
     // Ask a question
+    // =========================
     @PostMapping("/questions")
     public ResponseEntity<Question> askQuestion(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -43,13 +45,17 @@ public class ForumController {
         return ResponseEntity.ok(questionRepository.save(question));
     }
 
+    // =========================
     // List all questions
+    // =========================
     @GetMapping("/questions")
     public List<Question> getQuestions() {
         return questionRepository.findAll();
     }
 
+    // =========================
     // Answer a question
+    // =========================
     @PostMapping("/questions/{id}/answers")
     public ResponseEntity<Answer> answerQuestion(
             @PathVariable Long id,
@@ -69,11 +75,36 @@ public class ForumController {
         return ResponseEntity.ok(answerRepository.save(answer));
     }
 
-    // View answers
+    // =========================
+    // View question + answers (CLEAN RESPONSE)
+    // =========================
     @GetMapping("/questions/{id}/answers")
-    public List<Answer> getAnswers(@PathVariable Long id) {
+    public ResponseEntity<QuestionAnswerResponse> getAnswers(@PathVariable Long id) {
+
         Question question = questionRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Question not found"));
-        return answerRepository.findByQuestion(question);
+
+        List<Answer> answers = answerRepository.findByQuestion(question);
+
+        // Map Question → QuestionDTO
+        QuestionDTO questionDTO = new QuestionDTO(
+                question.getId(),
+                question.getTitle(),
+                question.getDescription(),
+                question.getCreatedAt()
+        );
+
+        // Map Answers → AnswerDTO list
+        List<AnswerDTO> answerDTOs = answers.stream()
+                .map(answer -> new AnswerDTO(
+                        answer.getId(),
+                        answer.getContent(),
+                        answer.getCreatedAt()
+                ))
+                .toList();
+
+        return ResponseEntity.ok(
+                new QuestionAnswerResponse(questionDTO, answerDTOs)
+        );
     }
 }
