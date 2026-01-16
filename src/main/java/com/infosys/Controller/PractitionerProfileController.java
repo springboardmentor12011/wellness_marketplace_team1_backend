@@ -35,7 +35,7 @@ public class PractitionerProfileController {
     @PutMapping("/ratePractitioner/{id}")
     public PractitionerProfile ratePractitioner(
             @PathVariable Long id,
-            @RequestBody Map<String, Object> body) {
+            @RequestBody Map<String, Object> body)  {
         Double rating = Double.valueOf(body.get("rating").toString());
         return service.updateRating(id, rating);
     }
