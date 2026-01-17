@@ -4,16 +4,29 @@ import com.wellness.backend.model.*;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
+@Repository
 public interface TherapySessionRepository extends JpaRepository<TherapySession, Long> {
 
-    // ----------------------------------
-    // PATIENT (User -> patient)
-    // ----------------------------------
+    // ---------------------------------------------------------------------
+    // SIMPLE EXISTENCE CHECKS (Required for delete validation)
+    // ---------------------------------------------------------------------
+
+    // User is a patient in at least one session?
+    boolean existsByPatient_Id(Long patientId);
+
+    // Practitioner is assigned in at least one session?
+    boolean existsByPractitioner_Id(Long practitionerId);
+
+
+    // ---------------------------------------------------------------------
+    // PATIENT-RELATED QUERIES
+    // ---------------------------------------------------------------------
 
     @Query("SELECT ts FROM TherapySession ts WHERE ts.patient = :user")
     List<TherapySession> findByUser(@Param("user") User user);
@@ -49,27 +62,26 @@ public interface TherapySessionRepository extends JpaRepository<TherapySession, 
             @Param("end") LocalDateTime end
     );
 
-    // ----------------------------------
-    // PRACTITIONER
-    // ----------------------------------
+
+    // ---------------------------------------------------------------------
+    // PRACTITIONER-RELATED QUERIES
+    // ---------------------------------------------------------------------
 
     @Query("""
         SELECT ts FROM TherapySession ts
         WHERE ts.practitioner.user = :user
     """)
-    List<TherapySession> findByPractitionerUser(
-            @Param("user") User user
-    );
+    List<TherapySession> findByPractitionerUser(@Param("user") User user);
 
     @Query("""
-    	    SELECT ts FROM TherapySession ts
-    	    WHERE ts.practitioner.user = :practitioner
-    	    AND ts.sessionTime > :now
-    	""")
-    	List<TherapySession> findByPractitionerAndSessionTimeAfter(
-    	        @Param("practitioner") User practitioner,
-    	        @Param("now") LocalDateTime now
-    	);
+        SELECT ts FROM TherapySession ts
+        WHERE ts.practitioner.user = :practitioner
+        AND ts.sessionTime > :now
+    """)
+    List<TherapySession> findByPractitionerAndSessionTimeAfter(
+            @Param("practitioner") User practitioner,
+            @Param("now") LocalDateTime now
+    );
 
     @Query("""
         SELECT ts FROM TherapySession ts
@@ -82,21 +94,26 @@ public interface TherapySessionRepository extends JpaRepository<TherapySession, 
             @Param("end") LocalDateTime end
     );
 
-//Find booked slots
-    @Query("""
-    	    SELECT ts.sessionTime FROM TherapySession ts
-    	    WHERE ts.practitioner.id = :practitionerId
-    	    AND DATE(ts.sessionTime) = :date
-    	    AND ts.status = 'BOOKED'
-    	""")
-    	List<LocalDateTime> findBookedSlots(
-    	        @Param("practitionerId") Long practitionerId,
-    	        @Param("date") LocalDate date
-    	);
 
-    // ----------------------------------
-    // CONFLICT CHECK
-    // ----------------------------------
+    // ---------------------------------------------------------------------
+    // BOOKED SLOTS
+    // ---------------------------------------------------------------------
+
+    @Query("""
+        SELECT ts.sessionTime FROM TherapySession ts
+        WHERE ts.practitioner.id = :practitionerId
+        AND DATE(ts.sessionTime) = :date
+        AND ts.status = 'BOOKED'
+    """)
+    List<LocalDateTime> findBookedSlots(
+            @Param("practitionerId") Long practitionerId,
+            @Param("date") LocalDate date
+    );
+
+
+    // ---------------------------------------------------------------------
+    // CONFLICT CHECK FOR SCHEDULING
+    // ---------------------------------------------------------------------
 
     @Query("""
         SELECT ts FROM TherapySession ts
@@ -110,9 +127,10 @@ public interface TherapySessionRepository extends JpaRepository<TherapySession, 
             @Param("end") LocalDateTime end
     );
 
-    // ----------------------------------
-    // REMINDERS
-    // ----------------------------------
+
+    // ---------------------------------------------------------------------
+    // REMINDER QUERY
+    // ---------------------------------------------------------------------
 
     @Query("""
         SELECT ts FROM TherapySession ts
@@ -124,9 +142,10 @@ public interface TherapySessionRepository extends JpaRepository<TherapySession, 
             @Param("reminderTime") LocalDateTime reminderTime
     );
 
-    // ----------------------------------
-    // STATUS
-    // ----------------------------------
+
+    // ---------------------------------------------------------------------
+    // STATUS FILTER
+    // ---------------------------------------------------------------------
 
     List<TherapySession> findByStatus(SessionStatus status);
 }

@@ -22,6 +22,7 @@ import java.util.stream.Stream;
 
 import com.wellness.backend.dto.BookSessionRequest;
 import com.wellness.backend.dto.RescheduleSessionRequest;
+import com.wellness.backend.dto.UpcomingSessionResponse;
 @RestController
 @RequestMapping("/api/sessions")
 @CrossOrigin(origins = "*")
@@ -107,7 +108,7 @@ public class TherapySessionController {
         );
     }
     @GetMapping("/patient/upcoming")
-    public ResponseEntity<List<TherapySession>> patientUpcomingSessions(
+    public ResponseEntity<List<UpcomingSessionResponse>> patientUpcomingSessions(
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
         return ResponseEntity.ok(
@@ -118,7 +119,7 @@ public class TherapySessionController {
     }
 
     @GetMapping("/practitioner/upcoming")
-    public ResponseEntity<List<TherapySession>> practitionerUpcomingSessions(
+    public ResponseEntity<List<UpcomingSessionResponse>> practitionerUpcomingSessions(
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
         return ResponseEntity.ok(

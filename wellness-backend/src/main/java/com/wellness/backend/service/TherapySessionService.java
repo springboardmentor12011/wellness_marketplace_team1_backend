@@ -1,15 +1,14 @@
 package com.wellness.backend.service;
 
+import com.wellness.backend.dto.SessionHistoryResponse;
+import com.wellness.backend.dto.UpcomingSessionResponse;
 import com.wellness.backend.integration.GoogleCalendarService.java.GoogleCalendarService;
 import com.wellness.backend.model.*;
 import com.wellness.backend.repository.*;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
-import java.time.DayOfWeek;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
+import java.time.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -33,29 +32,30 @@ public class TherapySessionService {
         this.googleCalendarService = googleCalendarService;
     }
 
-    // -----------------------------------------
-    // BOOK A THERAPY SESSION
-    // -----------------------------------------
+    // -------------------------------------------------
+    // BOOK SESSION
+    // -------------------------------------------------
     public TherapySession bookSession(
             Long patientId,
             Long practitionerId,
-            LocalDateTime time,
+            LocalDateTime sessionTime,
             SessionMode mode
     ) {
-        validateSessionTime(time);
+        validateSessionTime(sessionTime);
 
         User patient = userRepository.findById(patientId)
                 .orElseThrow(() -> new RuntimeException("Patient not found"));
 
-        PractitionerProfile practitioner = practitionerProfileRepository.findById(practitionerId)
+        PractitionerProfile practitioner = practitionerProfileRepository
+                .findById(practitionerId)
                 .orElseThrow(() -> new RuntimeException("Practitioner not found"));
 
-        validateSlotAvailability(practitioner, time);
+        validateSlotAvailability(practitioner, sessionTime);
 
         TherapySession session = TherapySession.builder()
                 .patient(patient)
                 .practitioner(practitioner)
-                .sessionTime(time)
+                .sessionTime(sessionTime)
                 .mode(mode)
                 .status(SessionStatus.BOOKED)
                 .build();
@@ -66,33 +66,77 @@ public class TherapySessionService {
         return session;
     }
 
-    // -----------------------------------------
-    // UPCOMING SESSIONS (PATIENT)
-    // -----------------------------------------
-    public List<TherapySession> getUpcomingSessions(Long patientId) {
+    // -------------------------------------------------
+    // UPCOMING SESSIONS — PATIENT
+    // -------------------------------------------------
+    public List<UpcomingSessionResponse> getUpcomingSessionsForPatient(User patient) {
 
-        User patient = userRepository.findById(patientId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        LocalDateTime now = LocalDateTime.now();
 
         return therapySessionRepository
-                .findByUserAndSessionTimeAfter(patient, LocalDateTime.now());
+                .findByUserAndSessionTimeAfter(patient, now)
+                .stream()
+                .filter(ts ->
+                        ts.getStatus() == SessionStatus.BOOKED ||
+                        ts.getStatus() == SessionStatus.RESCHEDULED
+                )
+                .map(this::mapToUpcomingDTO)
+                .toList();
     }
 
-    // -----------------------------------------
-    // SESSION HISTORY (PATIENT)
-    // -----------------------------------------
+    // -------------------------------------------------
+    // UPCOMING SESSIONS — PRACTITIONER
+    // -------------------------------------------------
+    public List<UpcomingSessionResponse> getUpcomingSessionsForPractitioner(User practitionerUser) {
+
+        PractitionerProfile practitioner =
+                practitionerProfileRepository.findByUser(practitionerUser)
+                        .orElseThrow(() -> new RuntimeException("Practitioner profile not found"));
+
+        LocalDateTime now = LocalDateTime.now();
+
+        return therapySessionRepository
+                .findByPractitionerAndSessionTimeAfter(practitionerUser, now)
+                .stream()
+                .filter(ts ->
+                        ts.getStatus() == SessionStatus.BOOKED ||
+                        ts.getStatus() == SessionStatus.RESCHEDULED
+                )
+                .map(this::mapToUpcomingDTO)
+                .toList();
+    }
+
     public List<TherapySession> getSessionHistory(Long patientId) {
 
         User patient = userRepository.findById(patientId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        return therapySessionRepository
-                .findByUserAndSessionTimeBefore(patient, LocalDateTime.now());
-    }
+        // Mark old sessions completed first
+        updateCompletedSessions();
 
-    // -----------------------------------------
+        return therapySessionRepository.findAll().stream()
+                .filter(ts -> ts.getPatient().getId().equals(patient.getId()))
+                .filter(ts -> ts.getSessionTime().isBefore(LocalDateTime.now()))
+                .toList();
+    }
+    private SessionHistoryResponse mapToHistoryDTO(TherapySession session) {
+
+        return new SessionHistoryResponse(
+                session.getId(),
+                session.getSessionTime(),
+                session.getStatus().name(),
+                session.getMode() != null ? session.getMode().name() : null,
+                session.getTherapyType() != null ? session.getTherapyType().name() : null,
+                session.getPractitioner().getId(),
+                session.getPractitioner().getUser().getName(),
+                session.getPatient().getId(),
+                session.getPatient().getName()
+        );
+    }		
+
+    // -------------------------------------------------
     // CANCEL SESSION
-    // -----------------------------------------
+    // -------------------------------------------------
     public void cancelSession(Long sessionId, Long patientId) {
 
         TherapySession session = therapySessionRepository.findById(sessionId)
@@ -108,9 +152,9 @@ public class TherapySessionService {
         googleCalendarService.deleteEvent(session);
     }
 
-    // -----------------------------------------
+    // -------------------------------------------------
     // RESCHEDULE SESSION
-    // -----------------------------------------
+    // -------------------------------------------------
     public TherapySession rescheduleSession(
             Long sessionId,
             Long patientId,
@@ -125,22 +169,20 @@ public class TherapySessionService {
             throw new AccessDeniedException("Not allowed");
         }
 
-        if (session.getStatus() != SessionStatus.BOOKED) {
-            throw new IllegalStateException("Only booked sessions can be rescheduled");
-        }
-
         validateSlotAvailability(session.getPractitioner(), newTime);
 
         session.setSessionTime(newTime);
-        session = therapySessionRepository.save(session);
+        session.setStatus(SessionStatus.RESCHEDULED);
 
+        session = therapySessionRepository.save(session);
         googleCalendarService.updateEvent(session);
+
         return session;
     }
 
-    // -----------------------------------------
-    // CALENDAR VIEW
-    // -----------------------------------------
+    // -------------------------------------------------
+    // CALENDAR VIEW — PATIENT & PRACTITIONER
+    // -------------------------------------------------
     public List<TherapySession> getCalendarSessions(
             User user,
             LocalDateTime start,
@@ -148,7 +190,7 @@ public class TherapySessionService {
     ) {
         if (user.getRole() == Role.PATIENT) {
             return therapySessionRepository
-                    .findByUserAndSessionTimeAfter(user, start);
+                    .findPatientSessionsBetween(user, start, end);
         }
 
         if (user.getRole() == Role.PRACTITIONER) {
@@ -159,9 +201,28 @@ public class TherapySessionService {
         throw new AccessDeniedException("Invalid role");
     }
 
-    // -----------------------------------------
-    // AVAILABLE SLOTS (NEW – INTEGRATED)
-    // -----------------------------------------
+    // -------------------------------------------------
+    // SESSION DETAIL
+    // -------------------------------------------------
+    public TherapySession getSessionDetail(Long sessionId, Long userId) {
+
+        TherapySession session = therapySessionRepository.findById(sessionId)
+                .orElseThrow(() -> new RuntimeException("Session not found"));
+
+        boolean isPatient = session.getPatient().getId().equals(userId);
+        boolean isPractitioner =
+                session.getPractitioner().getUser().getId().equals(userId);
+
+        if (!isPatient && !isPractitioner) {
+            throw new AccessDeniedException("Not authorized");
+        }
+
+        return session;
+    }
+
+    // -------------------------------------------------
+    // AVAILABLE SLOTS
+    // -------------------------------------------------
     public List<LocalDateTime> getAvailableSlots(
             Long practitionerId,
             LocalDate date
@@ -188,77 +249,63 @@ public class TherapySessionService {
         return available;
     }
 
-    // -----------------------------------------
+    // -------------------------------------------------
+    // DTO MAPPER
+    // -------------------------------------------------
+    private UpcomingSessionResponse mapToUpcomingDTO(TherapySession session) {
+        return new UpcomingSessionResponse(
+                session.getId(),
+                session.getSessionTime(),
+                session.getMode() != null ? session.getMode().name() : null,
+                session.getStatus().name(),
+                session.getPractitioner().getId(),
+                session.getPractitioner().getUser().getName(),
+                session.getPatient().getId(),
+                session.getPatient().getName(),
+                session.getTherapyType() != null
+                        ? session.getTherapyType().name()
+                        : null
+        );
+    }
+
+    // -------------------------------------------------
     // VALIDATIONS
-    // -----------------------------------------
+    // -------------------------------------------------
     private void validateSessionTime(LocalDateTime time) {
 
-        DayOfWeek day = time.getDayOfWeek();
-        LocalTime sessionTime = time.toLocalTime();
-
-        if (day == DayOfWeek.SUNDAY) {
+        if (time.getDayOfWeek() == DayOfWeek.SUNDAY) {
             throw new IllegalStateException("Sessions not available on Sundays");
         }
 
-        if (sessionTime.isBefore(LocalTime.of(8, 0))
-                || sessionTime.isAfter(LocalTime.of(22, 0))) {
+        LocalTime t = time.toLocalTime();
+        if (t.isBefore(LocalTime.of(8, 0)) || t.isAfter(LocalTime.of(22, 0))) {
             throw new IllegalStateException(
                     "Sessions allowed only between 8:00 AM and 10:00 PM"
             );
         }
     }
-    public List<TherapySession> getUpcomingSessionsForPatient(User patient) {
-        return therapySessionRepository
-                .findByUserAndSessionTimeAfter(
-                        patient,
-                        LocalDateTime.now()
-                );
+    public void updateCompletedSessions() {
+        LocalDateTime now = LocalDateTime.now();
+
+        List<TherapySession> pastSessions =
+                therapySessionRepository.findByStatus(SessionStatus.BOOKED)
+                        .stream()
+                        .filter(ts -> ts.getSessionTime().isBefore(now))
+                        .toList();
+
+        pastSessions.forEach(ts -> ts.setStatus(SessionStatus.COMPLETED));
+        therapySessionRepository.saveAll(pastSessions);
     }
-    public List<TherapySession> getUpcomingSessionsForPractitioner(User practitionerUser) {
-
-        PractitionerProfile profile =
-                practitionerProfileRepository.findByUser(practitionerUser)
-                .orElseThrow(() -> new RuntimeException("Practitioner profile not found"));
-
-        return therapySessionRepository.findByPractitionerAndSessionTimeAfter(
-                practitionerUser,
-                LocalDateTime.now()
-        );
-    }
-
-    public TherapySession getSessionDetail(Long sessionId, Long userId) {
-
-        TherapySession session = therapySessionRepository.findById(sessionId)
-                .orElseThrow(() -> new RuntimeException("Session not found"));
-
-        boolean isPatient =
-                session.getPatient().getId().equals(userId);
-
-        boolean isPractitioner =
-                session.getPractitioner().getUser().getId().equals(userId);
-
-        if (!isPatient && !isPractitioner) {
-            throw new AccessDeniedException("Not authorized");
-        }
-
-        return session;
-    }
-
     private void validateSlotAvailability(
             PractitionerProfile practitioner,
-            LocalDateTime newSessionTime
+            LocalDateTime time
     ) {
-        LocalDateTime start = newSessionTime.minusMinutes(30);
-        LocalDateTime end = newSessionTime.plusMinutes(30);
+        LocalDateTime start = time.minusMinutes(30);
+        LocalDateTime end = time.plusMinutes(30);
 
-        List<TherapySession> conflicts =
-                therapySessionRepository.findConflictingSessions(
-                        practitioner,
-                        start,
-                        end
-                );
-
-        if (!conflicts.isEmpty()) {
+        if (!therapySessionRepository
+                .findConflictingSessions(practitioner, start, end)
+                .isEmpty()) {
             throw new IllegalStateException("Time slot already booked");
         }
     }

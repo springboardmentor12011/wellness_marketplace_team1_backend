@@ -6,6 +6,7 @@ import com.wellness.backend.model.Role;
 import com.wellness.backend.model.User;
 import com.wellness.backend.repository.PractitionerProfileRepository;
 import com.wellness.backend.repository.UserRepository;
+import com.wellness.backend.repository.TherapySessionRepository;
 
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -18,11 +19,14 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PractitionerProfileRepository practitionerProfileRepository;
+    private final TherapySessionRepository therapySessionRepository;
 
     public UserService(UserRepository userRepository,
-                       PractitionerProfileRepository practitionerProfileRepository) {
+                       PractitionerProfileRepository practitionerProfileRepository,
+                       TherapySessionRepository therapySessionRepository) {
         this.userRepository = userRepository;
         this.practitionerProfileRepository = practitionerProfileRepository;
+        this.therapySessionRepository = therapySessionRepository;
     }
 
     // -------------------------------------------------
@@ -48,7 +52,7 @@ public class UserService {
     }
 
     // -------------------------------------------------
-    // ✅ ADMIN: GET ALL USERS
+    // ADMIN: GET ALL USERS
     // -------------------------------------------------
     public List<UserProfileResponse> getAllUsers() {
         return userRepository.findAll()
@@ -56,6 +60,7 @@ public class UserService {
                 .map(this::mapToProfileResponse)
                 .collect(Collectors.toList());
     }
+
 
     // -------------------------------------------------
     // DELETE OWN PROFILE (PATIENT / PRACTITIONER)
@@ -66,14 +71,26 @@ public class UserService {
             throw new AccessDeniedException("Admin cannot delete own account");
         }
 
+        // ✨ Check active sessions before deleting (as patient)
+        if (therapySessionRepository.existsByPatient_Id(currentUser.getId())) {
+            throw new IllegalStateException("You cannot delete your account. Active therapy sessions exist.");
+        }
+
         if (currentUser.getRole() == Role.PRACTITIONER) {
-            practitionerProfileRepository
-                    .findByUser(currentUser)
-                    .ifPresent(practitionerProfileRepository::delete);
+            var practitioner = practitionerProfileRepository.findByUser(currentUser);
+
+            // ✨ Check active sessions assigned to practitioner
+            if (practitioner.isPresent() &&
+                therapySessionRepository.existsByPractitioner_Id(practitioner.get().getId())) {
+                throw new IllegalStateException("You cannot delete your account. Active sessions assigned to you exist.");
+            }
+
+            practitioner.ifPresent(practitionerProfileRepository::delete);
         }
 
         userRepository.delete(currentUser);
     }
+
 
     // -------------------------------------------------
     // ADMIN: DELETE ANY USER
@@ -88,14 +105,26 @@ public class UserService {
             throw new AccessDeniedException("Admin cannot delete another admin");
         }
 
+        // ✨ Check active sessions for patient
+        if (therapySessionRepository.existsByPatient_Id(user.getId())) {
+            throw new IllegalStateException("Cannot delete user. User has active therapy sessions.");
+        }
+
+        // ✨ Check active sessions for practitioner
         if (user.getRole() == Role.PRACTITIONER) {
-            practitionerProfileRepository
-                    .findByUser(user)
-                    .ifPresent(practitionerProfileRepository::delete);
+            var practitioner = practitionerProfileRepository.findByUser(user);
+
+            if (practitioner.isPresent() &&
+                therapySessionRepository.existsByPractitioner_Id(practitioner.get().getId())) {
+                throw new IllegalStateException("Cannot delete practitioner. They have active therapy sessions.");
+            }
+
+            practitioner.ifPresent(practitionerProfileRepository::delete);
         }
 
         userRepository.delete(user);
     }
+
 
     // -------------------------------------------------
     // HELPER: ENTITY → DTO
