@@ -23,7 +23,11 @@ public class PractitionerProfile {
 
     @Builder.Default
     private boolean verified = false;
+    private Double latitude;
+    private Double longitude;
 
+    private String city;
+    private String address;
     @Builder.Default
     private Double rating = 0.0; // _rating
 }

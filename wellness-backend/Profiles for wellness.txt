@@ -30,6 +30,21 @@ Register:
 }
 
 {
+    "name": "Dr. Drake Ramoray",
+    "email": "drake10@gmail..com",
+    "password": "StrongPassword@123",
+    "role": "PRACTITIONER",
+  "specialization": "Mental Health Counselor",
+  "verified": true,
+  "latitude": 28.6200,
+  "longitude": 77.2000,
+  "city": "Delhi",
+  "address": "Karol Bagh, Delhi",
+  "rating": 4.8
+}
+
+
+{
   "name": "Aarav Sharma",
   "email": "aarav.patient@example.com",
   "password": "Password@123",

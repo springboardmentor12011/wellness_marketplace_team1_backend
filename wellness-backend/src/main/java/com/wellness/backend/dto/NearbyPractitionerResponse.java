@@ -5,19 +5,22 @@ import lombok.Data;
 
 @Data
 @Builder
-public class PractitionerResponse {
+public class NearbyPractitionerResponse {
 
+    private Long practitionerId;
     private String name;
     private String email;
-    private String password;
-    private String role;
-
     private String bio;
 
     private String specialization;
-    private Double latitude;
-    private Double longitude;
+    private boolean verified;
+    private double rating;
+
+    private double latitude;
+    private double longitude;
+
     private String city;
     private String address;
-    private Double rating;// String because we are returning role.name()
+
+    private double distanceKm;
 }

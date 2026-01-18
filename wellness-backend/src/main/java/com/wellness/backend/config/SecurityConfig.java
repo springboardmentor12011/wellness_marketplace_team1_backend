@@ -40,11 +40,18 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
         http
+            // ✅ Use ONLY this CORS config
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+
+            // ❌ Disable CSRF for REST APIs
             .csrf(csrf -> csrf.disable())
+
+            // ✅ Stateless JWT authentication
             .sessionManagement(sm ->
                     sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
+
+            // ✅ Authorization rules
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/api/ai/**").permitAll()
@@ -55,20 +62,33 @@ public class SecurityConfig {
                 .requestMatchers("/api/orders/**").authenticated()
                 .anyRequest().authenticated()
             )
+
+            // ✅ Authentication provider
             .authenticationProvider(authenticationProvider())
+
+            // ✅ JWT filter
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
+    // ✅ SINGLE CORS CONFIG (THIS FIXES YOUR ERROR)
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
 
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("*"));
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+
+        // 🔥 IMPORTANT: explicit frontend origin (NO "*")
+        config.setAllowedOrigins(List.of("http://localhost:5173"));
+
+        config.setAllowedMethods(List.of(
+                "GET", "POST", "PUT", "DELETE", "OPTIONS"
+        ));
+
         config.setAllowedHeaders(List.of("*"));
-        config.setAllowCredentials(false);
+
+        // ✅ Needed for Authorization header / JWT
+        config.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source =
                 new UrlBasedCorsConfigurationSource();

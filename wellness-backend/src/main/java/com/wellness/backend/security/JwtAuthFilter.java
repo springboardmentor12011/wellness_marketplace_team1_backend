@@ -27,10 +27,15 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         this.userDetailsService = userDetailsService;
     }
 
-    // 🔑 IMPORTANT: Skip auth endpoints
+    // ✅ SKIP JWT FILTER FOR PUBLIC ENDPOINTS
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return request.getServletPath().startsWith("/api/auth/");
+        String path = request.getServletPath();
+
+        return path.startsWith("/api/auth/")
+            || path.startsWith("/api/ai/")
+            || path.startsWith("/api/health-data/")
+            || path.startsWith("/api/therapy-types");
     }
 
     @Override
@@ -40,18 +45,27 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             FilterChain filterChain
     ) throws ServletException, IOException {
 
-        String authHeader = request.getHeader("Authorization");
+        final String authHeader = request.getHeader("Authorization");
 
+        // ✅ No token → continue without authentication
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        String token = authHeader.substring(7);
-        String username = jwtService.extractUsername(token);
+        final String token = authHeader.substring(7);
+        final String username;
 
-        if (username != null
-                && SecurityContextHolder.getContext().getAuthentication() == null) {
+        try {
+            username = jwtService.extractUsername(token);
+        } catch (Exception e) {
+            // ❌ Invalid token → reject
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            return;
+        }
+
+        if (username != null &&
+            SecurityContextHolder.getContext().getAuthentication() == null) {
 
             UserDetails userDetails =
                     userDetailsService.loadUserByUsername(username);

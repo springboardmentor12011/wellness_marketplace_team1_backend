@@ -1,6 +1,8 @@
 package com.wellness.backend.service;
 
-import com.wellness.backend.dto.*;
+import com.wellness.backend.dto.PractitionerResponse;
+import com.wellness.backend.dto.PractitionerUpdateRequest;
+import com.wellness.backend.dto.VerifyResponse;
 import com.wellness.backend.exception.ResourceNotFoundException;
 import com.wellness.backend.model.PractitionerProfile;
 import com.wellness.backend.model.User;
@@ -24,58 +26,96 @@ public class PractitionerService {
         this.userRepository = userRepository;
     }
 
+    /* ===================== READ OPERATIONS ===================== */
+
     public List<PractitionerResponse> listAllPractitioners() {
-        return practitionerRepo.findAll().stream()
+        return practitionerRepo.findAll()
+                .stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
     }
 
     public PractitionerResponse getPractitionerById(Long id) {
-        PractitionerProfile p = practitionerRepo.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Practitioner not found: " + id));
-        return toResponse(p);
+        PractitionerProfile profile = practitionerRepo.findById(id)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Practitioner not found with id: " + id)
+                );
+        return toResponse(profile);
     }
+
+    /* ===================== UPDATE PROFILE ===================== */
 
     @Transactional
-    public PractitionerResponse updatePractitionerProfile(Long practitionerProfileId, PractitionerUpdateRequest req, String userEmail) {
+    public PractitionerResponse updatePractitionerProfile(
+            Long practitionerProfileId,
+            PractitionerUpdateRequest req,
+            String userEmail
+    ) {
         PractitionerProfile profile = practitionerRepo.findById(practitionerProfileId)
-                .orElseThrow(() -> new ResourceNotFoundException("Practitioner not found: " + practitionerProfileId));
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Practitioner not found with id: " + practitionerProfileId)
+                );
 
-        // ensure the authenticated user owns this profile
-        if (!profile.getUser().getEmail().equals(userEmail)) {
-            throw new IllegalStateException("Not authorized to update this profile");
+        User user = profile.getUser();
+
+        // Authorization check
+        if (!user.getEmail().equals(userEmail)) {
+            throw new IllegalStateException("You are not authorized to update this practitioner profile");
         }
 
-        if (req.getSpecialization() != null) profile.setSpecialization(req.getSpecialization());
-        if (req.getBio() != null) profile.getUser().setBio(req.getBio());
+        // Update practitioner fields
+        if (req.getSpecialization() != null) {
+            profile.setSpecialization(req.getSpecialization());
+        }
 
-        // user entity is owner, so save user will cascade? to be safe save both
-        userRepository.save(profile.getUser());
-        PractitionerProfile saved = practitionerRepo.save(profile);
-        return toResponse(saved);
+        // Update user fields
+        if (req.getBio() != null) {
+            user.setBio(req.getBio());
+        }
+
+        // Save explicitly (safe)
+        userRepository.save(user);
+        PractitionerProfile savedProfile = practitionerRepo.save(profile);
+
+        return toResponse(savedProfile);
     }
+
+    /* ===================== VERIFY PRACTITIONER ===================== */
 
     @Transactional
     public VerifyResponse verifyPractitioner(Long practitionerProfileId) {
         PractitionerProfile profile = practitionerRepo.findById(practitionerProfileId)
-                .orElseThrow(() -> new ResourceNotFoundException("Practitioner not found: " + practitionerProfileId));
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Practitioner not found with id: " + practitionerProfileId)
+                );
+
         profile.setVerified(true);
         practitionerRepo.save(profile);
+
         return new VerifyResponse(profile.getId(), true);
     }
 
-    private PractitionerResponse toResponse(PractitionerProfile p) {
-        User u = p.getUser();
+    /* ===================== MAPPER ===================== */
+
+    private PractitionerResponse toResponse(PractitionerProfile profile) {
+        User user = profile.getUser();
+
         return PractitionerResponse.builder()
-                .id(p.getId())
-                .userId(u.getId())
-                .name(u.getName())
-                .email(u.getEmail())
-                .bio(u.getBio())
-                .specialization(p.getSpecialization())
-                .verified(p.isVerified())
-                .rating(p.getRating())
-                .role(u.getRole())
+                // From User entity
+                .name(user.getName())
+                .email(user.getEmail())
+                .password(null)        // NEVER return password
+                .role(user.getRole().name())
+                .bio(user.getBio())
+
+                // From PractitionerProfile entity
+                .specialization(profile.getSpecialization())
+                .latitude(profile.getLatitude())
+                .longitude(profile.getLongitude())
+                .city(profile.getCity())
+                .address(profile.getAddress())
+                .rating(profile.getRating())
+
                 .build();
     }
 }
