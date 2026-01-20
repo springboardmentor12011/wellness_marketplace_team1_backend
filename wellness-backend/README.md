@@ -269,8 +269,4 @@ Multi-language support
 
 Advanced analytics dashboard
 
-👨‍💻 Author
 
-Sarvesh Kumar Roy
-B.Tech CSE (Data Science) – 2025
-Backend & Full-Stack Developer
