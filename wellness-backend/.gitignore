@@ -1,81 +1,28 @@
-####################################
-# Maven / Build
-####################################
-target/
-!**/src/main/**/target/
-!**/src/test/**/target/
+# Ignore Maven / Gradle build folders
+/target/
+/build/
 
-####################################
-# Java
-####################################
-*.class
-*.log
+# Ignore IDE-specific files
+/.idea/
+/*.iml
+/.vscode/
+/*.classpath
+/*.project
+/*.settings/
+*.DS_Store
 
-####################################
-# Spring Boot
-####################################
-HELP.md
+# Ignore logs
+/logs/
+/*.log
 
-####################################
-# IDEs
-####################################
-
-# Eclipse / STS
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings/
-.springBeans
-.sts4-cache/
-
-# IntelliJ IDEA
-.idea/
-*.iws
-*.iml
-*.ipr
-
-# VS Code
-.vscode/
-
-# NetBeans
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-build/
-!**/src/main/**/build/
-!**/src/test/**/build/
-
-####################################
-# OS
-####################################
-.DS_Store
-Thumbs.db
-
-####################################
-# Environment & Secrets (CRITICAL)
-####################################
+# Ignore environment & credential files
 application.properties
 application.yml
-application-*.properties
-application-*.yml
+.env
+*.env
 
-####################################
-# OAuth / Credentials
-####################################
-client_secret_*.json
-*.pem
-*.key
+# Ignore OS generated files
+Thumbs.db
 
-####################################
-# Logs
-####################################
-logs/
-*.log
-
-####################################
-# Maven Wrapper (keep)
-####################################
-.mvn/wrapper/maven-wrapper.jar
+# Ignore node modules if full-stack project
+node_modules/
